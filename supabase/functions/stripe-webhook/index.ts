@@ -36,12 +36,16 @@ interface InvoiceData {
 }
 
 // Generate JWT token for subscriber
-async function generateJWTToken(subscriberId: string, merchantId: string): Promise<string> {
+async function generateJWTToken(
+  subscriberId: string,
+  merchantId: string
+): Promise<string> {
   try {
     // Get subscriber details with plan info
     const { data: subscriber, error } = await supabase
       .from('subscribers')
-      .select(`
+      .select(
+        `
         id,
         customer_email,
         customer_name,
@@ -52,7 +56,8 @@ async function generateJWTToken(subscriberId: string, merchantId: string): Promi
           name,
           features
         )
-      `)
+      `
+      )
       .eq('id', subscriberId)
       .eq('merchant_id', merchantId)
       .single()
@@ -74,7 +79,7 @@ async function generateJWTToken(subscriberId: string, merchantId: string): Promi
       status: subscriber.status,
       expires_at: subscriber.next_renewal_date,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60), // 90 days
+      exp: Math.floor(Date.now() / 1000) + 90 * 24 * 60 * 60, // 90 days
     }
 
     // Sign JWT using Web Crypto API
@@ -94,15 +99,15 @@ async function generateJWTToken(subscriberId: string, merchantId: string): Promi
       .replace(/=/g, '')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
-    
+
     const encodedPayload = btoa(JSON.stringify(payload))
       .replace(/=/g, '')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
-    
+
     const data = encoder.encode(`${encodedHeader}.${encodedPayload}`)
     const signature = await crypto.subtle.sign('HMAC', key, data)
-    
+
     // Convert signature to base64url
     const signatureArray = new Uint8Array(signature)
     let binaryString = ''
@@ -113,11 +118,14 @@ async function generateJWTToken(subscriberId: string, merchantId: string): Promi
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=/g, '')
-    
+
     const token = `${encodedHeader}.${encodedPayload}.${encodedSignature}`
 
-    console.log('✅ JWT token generated for subscriber:', subscriber.customer_email)
-    
+    console.log(
+      '✅ JWT token generated for subscriber:',
+      subscriber.customer_email
+    )
+
     return token
   } catch (error: any) {
     console.error('❌ Error generating JWT token:', error.message)
@@ -140,17 +148,24 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
     try {
       console.log('📥 Fetching merchant logo...')
       const logoResponse = await fetch(data.merchantLogo)
-      
+
       if (logoResponse.ok) {
         const logoBlob = await logoResponse.arrayBuffer()
         const logoBase64 = btoa(
-          new Uint8Array(logoBlob).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          new Uint8Array(logoBlob).reduce(
+            (data, byte) => data + String.fromCharCode(byte),
+            ''
+          )
         )
-        
+
         // Determine image type from URL or content-type
-        const contentType = logoResponse.headers.get('content-type') || 'image/png'
-        const imageType = contentType.includes('jpeg') || contentType.includes('jpg') ? 'JPEG' : 'PNG'
-        
+        const contentType =
+          logoResponse.headers.get('content-type') || 'image/png'
+        const imageType =
+          contentType.includes('jpeg') || contentType.includes('jpg')
+            ? 'JPEG'
+            : 'PNG'
+
         const logoDataUrl = `data:${contentType};base64,${logoBase64}`
         doc.addImage(logoDataUrl, imageType, 20, currentY - 5, 30, 30)
         console.log('✅ Logo added to PDF')
@@ -172,7 +187,7 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
   doc.setTextColor(...textColor)
   doc.text('INVOICE', 190, currentY + 5, { align: 'right' })
 
-  currentY += (data.merchantLogo ? 35 : 15)
+  currentY += data.merchantLogo ? 35 : 15
 
   doc.setFontSize(10)
   doc.setTextColor(100, 116, 139)
@@ -188,7 +203,7 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
   if (data.merchantAddress) {
     const addressLines = doc.splitTextToSize(data.merchantAddress, 80)
     doc.text(addressLines, 20, currentY)
-    currentY += (addressLines.length * 5)
+    currentY += addressLines.length * 5
   }
 
   if (data.merchantGST) {
@@ -341,7 +356,7 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
     } else {
       totalsY += 15
     }
-      
+
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.text('Payment Information:', 20, totalsY)
@@ -359,7 +374,8 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
     }
   }
 
-  const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight()
+  const pageHeight =
+    doc.internal.pageSize.height || doc.internal.pageSize.getHeight()
   const footerY = pageHeight - 20
 
   doc.setDrawColor(...lightGray)
@@ -368,7 +384,9 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
   doc.setFontSize(8)
   doc.setTextColor(100, 116, 139)
   doc.setFont('helvetica', 'normal')
-  doc.text('Thank you for your business!', 105, footerY + 5, { align: 'center' })
+  doc.text('Thank you for your business!', 105, footerY + 5, {
+    align: 'center',
+  })
   doc.text(
     'For any queries, please contact us at ' + data.merchantEmail,
     105,
@@ -381,10 +399,16 @@ async function generateInvoicePDFBase64(data: InvoiceData): Promise<string> {
 }
 
 // Email sending function
-async function sendEmailWithAttachment(to: string, from: string, subject: string, html: string, attachment?: any) {
+async function sendEmailWithAttachment(
+  to: string,
+  from: string,
+  subject: string,
+  html: string,
+  attachment?: any
+) {
   try {
     console.log('📧 Calling send-email function for:', to)
-    
+
     const body: any = {
       to,
       from,
@@ -417,7 +441,14 @@ async function sendEmailWithAttachment(to: string, from: string, subject: string
 }
 
 // Email templates
-function getWelcomeEmailHtml(customerName: string, planName: string, amount: number, merchantName: string, merchantEmail: string, nextBillingDate: string) {
+function getWelcomeEmailHtml(
+  customerName: string,
+  planName: string,
+  amount: number,
+  merchantName: string,
+  merchantEmail: string,
+  nextBillingDate: string
+) {
   return `
     <!DOCTYPE html>
     <html>
@@ -479,7 +510,14 @@ function getWelcomeEmailHtml(customerName: string, planName: string, amount: num
   `
 }
 
-function getPaymentSuccessEmailHtml(customerName: string, planName: string, amount: number, merchantName: string, merchantEmail: string, nextBillingDate: string) {
+function getPaymentSuccessEmailHtml(
+  customerName: string,
+  planName: string,
+  amount: number,
+  merchantName: string,
+  merchantEmail: string,
+  nextBillingDate: string
+) {
   return `
     <!DOCTYPE html>
     <html>
@@ -519,7 +557,11 @@ function getPaymentSuccessEmailHtml(customerName: string, planName: string, amou
             </div>
             <div class="detail">
               <span><strong>Payment Date:</strong></span>
-              <span>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>${new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}</span>
             </div>
             <div class="detail">
               <span><strong>Next Billing Date:</strong></span>
@@ -543,7 +585,13 @@ function getPaymentSuccessEmailHtml(customerName: string, planName: string, amou
   `
 }
 
-function getPaymentFailedEmailHtml(customerName: string, planName: string, amount: number, merchantName: string, merchantEmail: string) {
+function getPaymentFailedEmailHtml(
+  customerName: string,
+  planName: string,
+  amount: number,
+  merchantName: string,
+  merchantEmail: string
+) {
   return `
     <!DOCTYPE html>
     <html>
@@ -602,7 +650,7 @@ function getPaymentFailedEmailHtml(customerName: string, planName: string, amoun
 
 serve(async (req) => {
   const signature = req.headers.get('stripe-signature')
-  
+
   if (!signature) {
     console.error('❌ No signature provided')
     return new Response('No signature', { status: 400 })
@@ -611,22 +659,25 @@ serve(async (req) => {
   try {
     const body = await req.text()
     const parsedBody = JSON.parse(body)
-    
+
     console.log('🔧 Event type:', parsedBody.type)
-    
+
     let merchantId = parsedBody.data?.object?.metadata?.merchant_id
-    
+
     if (!merchantId && parsedBody.data?.object?.subscription_data?.metadata) {
       merchantId = parsedBody.data.object.subscription_data.metadata.merchant_id
     }
-    
-    if (!merchantId && parsedBody.data?.object?.lines?.data?.[0]?.metadata?.merchant_id) {
+
+    if (
+      !merchantId &&
+      parsedBody.data?.object?.lines?.data?.[0]?.metadata?.merchant_id
+    ) {
       merchantId = parsedBody.data.object.lines.data[0].metadata.merchant_id
     }
 
     if (!merchantId) {
       const subscriptionId = parsedBody.data?.object?.subscription
-      
+
       if (subscriptionId) {
         const { data: subscriber } = await supabase
           .from('subscribers')
@@ -634,13 +685,13 @@ serve(async (req) => {
           .eq('stripe_subscription_id', subscriptionId)
           .limit(1)
           .single()
-        
+
         if (subscriber) {
           merchantId = subscriber.merchant_id
         }
       }
     }
-    
+
     if (!merchantId) {
       console.error('❌ No merchant_id found')
       return new Response('No merchant_id found', { status: 400 })
@@ -648,7 +699,9 @@ serve(async (req) => {
 
     const { data: merchant, error: merchantError } = await supabase
       .from('merchants')
-      .select('stripe_api_key, stripe_webhook_secret, business_name, email, bank_account, gst_number, logo_url, phone')
+      .select(
+        'stripe_api_key, stripe_webhook_secret, business_name, email, bank_account, gst_number, logo_url, phone'
+      )
       .eq('id', merchantId)
       .single()
 
@@ -668,7 +721,7 @@ serve(async (req) => {
     })
 
     const webhookSecret = merchant.stripe_webhook_secret
-    
+
     const event = await stripe.webhooks.constructEventAsync(
       body,
       signature,
@@ -681,21 +734,32 @@ serve(async (req) => {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session, stripe, merchant)
+        await handleCheckoutCompleted(
+          event.data.object as Stripe.Checkout.Session,
+          stripe,
+          merchant
+        )
         break
-      
+
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
+        await handleSubscriptionUpdated(
+          event.data.object as Stripe.Subscription
+        )
         break
-      
+
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        await handleSubscriptionDeleted(
+          event.data.object as Stripe.Subscription
+        )
         break
-      
+
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object as Stripe.Invoice, merchant)
+        await handlePaymentSucceeded(
+          event.data.object as Stripe.Invoice,
+          merchant
+        )
         break
-      
+
       case 'invoice.payment_failed':
         await handlePaymentFailed(event.data.object as Stripe.Invoice, merchant)
         break
@@ -711,10 +775,20 @@ serve(async (req) => {
   }
 })
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe: Stripe, merchant: any) {
+async function handleCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  stripe: Stripe,
+  merchant: any
+) {
   console.log('🎉 Processing checkout.session.completed')
-  
-  const { customer, subscription, metadata, customer_email, id: sessionId } = session
+
+  const {
+    customer,
+    subscription,
+    metadata,
+    customer_email,
+    id: sessionId,
+  } = session
   const { plan_id, merchant_id, customer_name } = metadata as any
 
   if (!subscription) {
@@ -723,12 +797,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
   }
 
   try {
-    const stripeSubscription = await stripe.subscriptions.retrieve(subscription as string)
+    const stripeSubscription = await stripe.subscriptions.retrieve(
+      subscription as string
+    )
 
-    const startDate = stripeSubscription.current_period_start 
+    const startDate = stripeSubscription.current_period_start
       ? new Date(stripeSubscription.current_period_start * 1000).toISOString()
       : new Date().toISOString()
-    
+
     const nextRenewalDate = stripeSubscription.current_period_end
       ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
       : null
@@ -738,10 +814,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
     let planName = 'Unknown Plan'
 
     if (firstInvoiceId) {
-      const invoice = typeof firstInvoiceId === 'string' 
-        ? await stripe.invoices.retrieve(firstInvoiceId)
-        : firstInvoiceId
-      
+      const invoice =
+        typeof firstInvoiceId === 'string'
+          ? await stripe.invoices.retrieve(firstInvoiceId)
+          : firstInvoiceId
+
       paymentAmount = (invoice.amount_paid || 0) / 100
     }
 
@@ -750,24 +827,28 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
       .select('name')
       .eq('id', plan_id)
       .single()
-    
+
     if (plan) {
       planName = plan.name
     }
 
-    const { data: newSubscriber, error } = await supabase.from('subscribers').insert({
-      merchant_id,
-      plan_id,
-      customer_name,
-      customer_email,
-      status: 'active',
-      stripe_subscription_id: subscription,
-      stripe_customer_id: customer,
-      start_date: startDate,
-      next_renewal_date: nextRenewalDate,
-      last_payment_date: new Date().toISOString(),
-      last_payment_amount: paymentAmount,
-    }).select().single()
+    const { data: newSubscriber, error } = await supabase
+      .from('subscribers')
+      .insert({
+        merchant_id,
+        plan_id,
+        customer_name,
+        customer_email,
+        status: 'active',
+        stripe_subscription_id: subscription,
+        stripe_customer_id: customer,
+        start_date: startDate,
+        next_renewal_date: nextRenewalDate,
+        last_payment_date: new Date().toISOString(),
+        last_payment_amount: paymentAmount,
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error('❌ Error creating subscriber:', error)
@@ -780,19 +861,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
     try {
       console.log('🔑 Generating JWT token for widget...')
       const jwtToken = await generateJWTToken(newSubscriber.id, merchant_id)
-      
+
       // Store token in access_tokens table with session_id
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 90) // 90 days expiry
 
-      const { error: tokenError } = await supabase.from('access_tokens').insert({
-        merchant_id,
-        subscriber_id: newSubscriber.id,
-        token: jwtToken,
-        stripe_session_id: sessionId,
-        expires_at: expiresAt.toISOString(),
-        used: false,
-      })
+      const { error: tokenError } = await supabase
+        .from('access_tokens')
+        .insert({
+          merchant_id,
+          subscriber_id: newSubscriber.id,
+          token: jwtToken,
+          stripe_session_id: sessionId,
+          expires_at: expiresAt.toISOString(),
+          used: false,
+        })
 
       if (tokenError) {
         console.error('❌ Error storing access token:', tokenError)
@@ -810,7 +893,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
         plan_id,
         amount: paymentAmount,
         status: 'success',
-        stripe_payment_id: typeof firstInvoiceId === 'string' ? firstInvoiceId : firstInvoiceId?.id,
+        stripe_payment_id:
+          typeof firstInvoiceId === 'string'
+            ? firstInvoiceId
+            : firstInvoiceId?.id,
         payment_date: new Date().toISOString(),
       })
       console.log('✅ Initial payment transaction created')
@@ -819,10 +905,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
     await supabase.rpc('increment_subscriber_count', { p_plan_id: plan_id })
 
     // Generate Invoice PDF
-    const invoiceId = `INV-${new Date().toISOString().split('T')[0].replace(/-/g, '').substring(2)}-${newSubscriber.id.substring(0, 8).toUpperCase()}`
-    const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    const nextBillingFormatted = nextRenewalDate 
-      ? new Date(nextRenewalDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const invoiceId = `INV-${new Date()
+      .toISOString()
+      .split('T')[0]
+      .replace(/-/g, '')
+      .substring(2)}-${newSubscriber.id.substring(0, 8).toUpperCase()}`
+    const invoiceDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+    const nextBillingFormatted = nextRenewalDate
+      ? new Date(nextRenewalDate).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
       : 'N/A'
 
     const invoiceData: InvoiceData = {
@@ -842,7 +940,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
       currency: 'INR',
       status: 'success',
       paymentMethod: 'Stripe',
-      transactionId: typeof firstInvoiceId === 'string' ? firstInvoiceId : firstInvoiceId?.id,
+      transactionId:
+        typeof firstInvoiceId === 'string'
+          ? firstInvoiceId
+          : firstInvoiceId?.id,
       billingCycle: 'Monthly',
     }
 
@@ -851,12 +952,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
     console.log('✅ Invoice PDF generated')
 
     const fromEmail = `${merchant.business_name} <no-reply@substrack.work.gd>`
-    
+
     await sendEmailWithAttachment(
       customer_email,
       fromEmail,
       `Welcome to ${merchant.business_name}! Your subscription is active`,
-      getWelcomeEmailHtml(customer_name, planName, paymentAmount, merchant.business_name, merchant.email, nextBillingFormatted),
+      getWelcomeEmailHtml(
+        customer_name,
+        planName,
+        paymentAmount,
+        merchant.business_name,
+        merchant.email,
+        nextBillingFormatted
+      ),
       {
         filename: `${invoiceId}.pdf`,
         content: pdfBase64,
@@ -873,11 +981,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session, stripe:
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log('🔄 Processing customer.subscription.updated')
-  
+
   const nextRenewalDate = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
     : null
-  
+
   await supabase
     .from('subscribers')
     .update({
@@ -889,7 +997,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log('🗑️ Processing customer.subscription.deleted')
-  
+
   const { data: subscriber } = await supabase
     .from('subscribers')
     .select('plan_id')
@@ -903,16 +1011,19 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
     .eq('stripe_subscription_id', subscription.id)
 
   if (subscriber) {
-    await supabase.rpc('decrement_subscriber_count', { p_plan_id: subscriber.plan_id })
+    await supabase.rpc('decrement_subscriber_count', {
+      p_plan_id: subscriber.plan_id,
+    })
   }
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice, merchant: any) {
   console.log('💰 Processing invoice.payment_succeeded')
-  
-  let subscriptionId = typeof invoice.subscription === 'string' 
-    ? invoice.subscription 
-    : invoice.subscription?.id
+
+  let subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id
 
   if (!subscriptionId && invoice.lines?.data?.[0]) {
     const lineItem = invoice.lines.data[0] as any
@@ -926,7 +1037,9 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, merchant: any) {
 
   const { data: subscribers } = await supabase
     .from('subscribers')
-    .select('id, merchant_id, plan_id, customer_name, customer_email, next_renewal_date')
+    .select(
+      'id, merchant_id, plan_id, customer_name, customer_email, next_renewal_date'
+    )
     .eq('stripe_subscription_id', subscriptionId)
     .limit(1)
 
@@ -977,13 +1090,25 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, merchant: any) {
 
   const planName = plan?.name || 'Unknown Plan'
   const nextBillingFormatted = subscriber.next_renewal_date
-    ? new Date(subscriber.next_renewal_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(subscriber.next_renewal_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : 'N/A'
 
   // Send email only for renewals, not first payment
   if (invoice.billing_reason !== 'subscription_create') {
-    const invoiceId = `INV-${new Date().toISOString().split('T')[0].replace(/-/g, '').substring(2)}-${subscriber.id.substring(0, 8).toUpperCase()}`
-    const invoiceDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    const invoiceId = `INV-${new Date()
+      .toISOString()
+      .split('T')[0]
+      .replace(/-/g, '')
+      .substring(2)}-${subscriber.id.substring(0, 8).toUpperCase()}`
+    const invoiceDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
 
     const invoiceData: InvoiceData = {
       invoiceId,
@@ -1010,13 +1135,20 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, merchant: any) {
     const pdfBase64 = await generateInvoicePDFBase64(invoiceData)
     console.log('✅ Invoice PDF generated')
 
-    const fromEmail = `${merchant.business_name} <no-reply@substrack.work.gd>`
-    
+    const fromEmail = `${merchant.business_name}  <no-reply@substrack.work.gd>`
+
     await sendEmailWithAttachment(
       subscriber.customer_email,
       fromEmail,
       `Payment Received - ${merchant.business_name}`,
-      getPaymentSuccessEmailHtml(subscriber.customer_name, planName, paymentAmount, merchant.business_name, merchant.email, nextBillingFormatted),
+      getPaymentSuccessEmailHtml(
+        subscriber.customer_name,
+        planName,
+        paymentAmount,
+        merchant.business_name,
+        merchant.email,
+        nextBillingFormatted
+      ),
       {
         filename: `${invoiceId}.pdf`,
         content: pdfBase64,
@@ -1029,10 +1161,11 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, merchant: any) {
 
 async function handlePaymentFailed(invoice: Stripe.Invoice, merchant: any) {
   console.log('❌ Processing invoice.payment_failed')
-  
-  let subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id
+
+  let subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id
 
   if (!subscriptionId) {
     return
@@ -1092,7 +1225,13 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, merchant: any) {
     subscriber.customer_email,
     fromEmail,
     `Payment Failed - Action Required`,
-    getPaymentFailedEmailHtml(subscriber.customer_name, planName, amount, merchant.business_name, merchant.email)
+    getPaymentFailedEmailHtml(
+      subscriber.customer_name,
+      planName,
+      amount,
+      merchant.business_name,
+      merchant.email
+    )
   )
   console.log('✅ Payment failed email sent')
 }

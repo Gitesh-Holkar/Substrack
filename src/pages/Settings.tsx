@@ -39,7 +39,7 @@ export function Settings() {
   });
 
   const webhookUrl = `${window.location.origin.replace(window.location.hostname, 'niisdiotuzvydotoaurt.supabase.co')}/functions/v1/stripe-webhook`;
-  const sdkUrl = 'https://substrack.work.gd/substrack-sdk.js';
+  const sdkUrl = 'https://substrack-yags.vercel.app/substrack-sdk.js';
 
   useEffect(() => {
     if (merchant) {

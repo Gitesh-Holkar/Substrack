@@ -4,7 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 
 export function ContactUs() {
   const [copied, setCopied] = useState(false);
-  const supportEmail = 'support@substrack.work.gd';
+  const supportEmail = 'support@substrack-yags.vercel.app';
 
   const handleCopyEmail = () => {
     navigator.clipboard.writeText(supportEmail);

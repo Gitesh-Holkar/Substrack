@@ -155,7 +155,7 @@ export function Plans() {
 
   const getPaymentLink = (plan: PlanWithActiveCount): string => {
     if (!plan.stripe_price_id) return '#';
-    const baseUrl = 'https://substrack.work.gd';
+    const baseUrl = 'https://substrack-yags.vercel.app';
     return `${baseUrl}/subscribe/${plan.id}`;
   };
 
@@ -194,7 +194,7 @@ export function Plans() {
     const merchantId = user?.id || 'YOUR_MERCHANT_ID';
     const code = `<!-- SubsTrack Subscription Widget -->
 <div id="substrack-widget" data-merchant-id="${merchantId}"></div>
-<script src="https://substrack.work.gd/widget.js" async></script>`;
+<script src="https://substrack-yags.vercel.app/widget.js" async></script>`;
     navigator.clipboard.writeText(code);
     alert('✅ Embed code copied to clipboard!');
   };
