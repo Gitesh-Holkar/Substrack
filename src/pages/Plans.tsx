@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase, SubscriptionPlan } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Check, ExternalLink, PauseCircle } from 'lucide-react';
+import { Plus, Check, ExternalLink, PauseCircle, Edit2 } from 'lucide-react';
 import { StripeService } from '../services/stripeService';
 
 // Extended type to include active subscriber count
@@ -14,12 +14,18 @@ export function Plans() {
   const { user, merchant } = useAuth();
   const [plans, setPlans] = useState<PlanWithActiveCount[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<PlanWithActiveCount | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     billing_cycle: 'monthly',
+    features: [''],
+  });
+  const [editFormData, setEditFormData] = useState({
+    description: '',
     features: [''],
   });
 
@@ -130,6 +136,47 @@ export function Plans() {
     }
   };
 
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    
+    setLoading(true);
+
+    try {
+      const updateData = {
+        description: editFormData.description,
+        features: editFormData.features.filter((f) => f.trim() !== ''),
+      };
+
+      const { error } = await supabase
+        .from('subscription_plans')
+        .update(updateData)
+        .eq('id', editingPlan.id);
+
+      if (error) throw error;
+
+      setShowEditModal(false);
+      setEditingPlan(null);
+      resetEditForm();
+      loadPlans();
+      alert('✅ Plan updated successfully!');
+    } catch (error: any) {
+      console.error('Error updating plan:', error);
+      alert('Failed to update plan: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditModal = (plan: PlanWithActiveCount) => {
+    setEditingPlan(plan);
+    setEditFormData({
+      description: plan.description || '',
+      features: plan.features.length > 0 ? [...plan.features] : [''],
+    });
+    setShowEditModal(true);
+  };
+
   const toggleActive = async (plan: PlanWithActiveCount) => {
     const newStatus = !plan.is_active;
     
@@ -175,6 +222,13 @@ export function Plans() {
     });
   };
 
+  const resetEditForm = () => {
+    setEditFormData({
+      description: '',
+      features: [''],
+    });
+  };
+
   const addFeature = () => {
     setFormData({ ...formData, features: [...formData.features, ''] });
   };
@@ -188,6 +242,21 @@ export function Plans() {
   const removeFeature = (index: number) => {
     const newFeatures = formData.features.filter((_, i) => i !== index);
     setFormData({ ...formData, features: newFeatures });
+  };
+
+  const addEditFeature = () => {
+    setEditFormData({ ...editFormData, features: [...editFormData.features, ''] });
+  };
+
+  const updateEditFeature = (index: number, value: string) => {
+    const newFeatures = [...editFormData.features];
+    newFeatures[index] = value;
+    setEditFormData({ ...editFormData, features: newFeatures });
+  };
+
+  const removeEditFeature = (index: number) => {
+    const newFeatures = editFormData.features.filter((_, i) => i !== index);
+    setEditFormData({ ...editFormData, features: newFeatures });
   };
 
   const copyEmbedCode = () => {
@@ -312,9 +381,16 @@ export function Plans() {
                 {plan.active_subscriber_count || 0} Active Subscribers
               </p>
               
-              {/* Show Payment Link or Paused Message */}
+              {/* Show Edit Button and Payment Link or Paused Message */}
               {plan.is_active ? (
-                <>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => openEditModal(plan)}
+                    className="w-full bg-blue-50 text-blue-700 px-4 py-2 rounded-md font-semibold text-sm hover:bg-blue-100 flex items-center justify-center transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit Plan
+                  </button>
                   {plan.stripe_price_id && merchant?.stripe_api_key && (
                     <button
                       onClick={() => copyPaymentLink(plan)}
@@ -324,7 +400,7 @@ export function Plans() {
                       Copy Payment Link
                     </button>
                   )}
-                </>
+                </div>
               ) : (
                 <div className="bg-orange-50 border border-orange-200 rounded-md p-3">
                   <div className="flex items-start">
@@ -484,6 +560,88 @@ export function Plans() {
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
                     {loading ? 'Creating...' : 'Create Plan'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Edit Plan */}
+      {showEditModal && editingPlan && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Edit Plan: {editingPlan.name}
+              </h2>
+              <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Note:</span> You can only edit the description and features. Plan name, price, and billing cycle cannot be changed.
+                </p>
+              </div>
+              <form onSubmit={handleEditSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Describe what's included in this plan"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Features</label>
+                  {editFormData.features.map((feature, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={feature}
+                        onChange={(e) => updateEditFeature(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Feature description"
+                      />
+                      {editFormData.features.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeEditFeature(index)}
+                          className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addEditFeature}
+                    className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    + Add Feature
+                  </button>
+                </div>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingPlan(null);
+                      resetEditForm();
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Updating...' : 'Update Plan'}
                   </button>
                 </div>
               </form>
