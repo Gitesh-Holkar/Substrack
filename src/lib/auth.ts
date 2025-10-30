@@ -1,3 +1,4 @@
+// src/lib/auth.ts - UPDATED WITH GOOGLE OAUTH
 import { supabase } from './supabase';
 
 export async function signUp(email: string, password: string, fullName: string, businessName: string) {
@@ -37,6 +38,56 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
+// NEW: Google OAuth Sign In
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+// NEW: Handle OAuth callback and create merchant profile
+export async function handleOAuthCallback(fullName?: string, businessName?: string) {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    throw new Error('No user found after OAuth');
+  }
+
+  // Check if merchant profile already exists
+  const { data: existingMerchant } = await supabase
+    .from('merchants')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // If merchant doesn't exist, create profile
+  if (!existingMerchant) {
+    const { error: merchantError } = await supabase.rpc('create_merchant_profile', {
+      user_id: user.id,
+      user_email: user.email || '',
+      user_full_name: fullName || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      user_business_name: businessName || user.user_metadata?.full_name || 'My Business',
+    });
+
+    if (merchantError) {
+      console.error('Error creating merchant profile:', merchantError);
+      throw merchantError;
+    }
+  }
+
+  return user;
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
@@ -58,3 +109,7 @@ export async function getMerchantProfile(userId: string) {
   if (error) throw error;
   return data;
 }
+
+
+
+
