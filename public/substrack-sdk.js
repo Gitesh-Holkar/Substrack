@@ -7,7 +7,7 @@
       this.token = null;
       this.subscriber = null;
       this.initialized = false;
-      this.apiBase = 'https://substrack-yags.vercel.app/functions/v1'; // UPDATED
+      this.apiBase = 'https://niisdiotuzvydotoaurt.supabase.co/functions/v1'; // UPDATED
     }
 
     async init() {
