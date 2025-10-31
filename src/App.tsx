@@ -1,9 +1,10 @@
-// src/App.tsx - UPDATED WITH OAUTH CALLBACK ROUTE
+// src/App.tsx - UPDATED WITH LANDING PAGE
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
-import { AuthCallback } from './pages/AuthCallback'; // NEW IMPORT
+import { AuthCallback } from './pages/AuthCallback';
 import { Dashboard } from './pages/Dashboard';
 import { Plans } from './pages/Plans';
 import { Settings } from './pages/Settings';
@@ -55,7 +56,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Landing Page - Public */}
+      <Route path="/" element={<LandingPage />} />
+      
+      {/* Auth Routes */}
       <Route
         path="/login"
         element={
@@ -72,9 +76,9 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
-      {/* NEW: OAuth Callback Route */}
       <Route path="/auth/callback" element={<AuthCallback />} />
       
+      {/* Protected Dashboard Routes */}
       <Route
         path="/dashboard"
         element={
@@ -123,6 +127,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
       {/* Public subscription pages */}
       <Route path="/subscribe/:planId" element={<Subscribe />} />
       <Route path="/payment-success" element={<PaymentSuccess />} />
