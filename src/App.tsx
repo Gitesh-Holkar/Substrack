@@ -1,4 +1,5 @@
 // src/App.tsx - UPDATED WITH LANDING PAGE
+import { MobileBlockModal } from './components/MobileBlockModal';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LandingPage } from './pages/LandingPage';
@@ -141,6 +142,7 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
+      <MobileBlockModal />
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
