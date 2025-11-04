@@ -1,175 +1,96 @@
-// public/substrack-sdk.js
+// public/substrack-sdk.js - EMAIL-BASED VERSION (No JWT tokens)
 (function(window) {
   'use strict';
 
   class Substrack {
     constructor() {
-      this.token = null;
       this.subscriber = null;
       this.initialized = false;
-      this.apiBase = 'https://niisdiotuzvydotoaurt.supabase.co/functions/v1'; // UPDATED
+      this.merchantId = null;
+      this.apiBase = 'https://niisdiotuzvydotoaurt.supabase.co/functions/v1';
     }
 
-    async init() {
-      console.log('🚀 Substrack SDK v2.0.0 initialized');
+    // Initialize with merchant ID
+    async init(merchantId) {
+      console.log('🚀 Substrack SDK v3.0.0 (Email-Based) initialized');
       
-      // Check URL parameters first (after redirect from Substrack)
-      const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('substrack_session');
-      
-      if (sessionId) {
-        console.log('📦 Found session ID in URL, exchanging for token...');
-        const success = await this.exchangeSessionForToken(sessionId);
-        
-        if (success) {
-          // Clean URL ONLY after successful exchange
-          const cleanUrl = window.location.pathname + window.location.hash;
-          window.history.replaceState({}, document.title, cleanUrl);
-        }
-      } else {
-        // Load from localStorage
-        this.loadFromStorage();
-        
-        // Verify token if exists
-        if (this.token) {
-          console.log('🔍 Verifying existing token...');
-          const valid = await this.verifyToken();
-          if (!valid) {
-            console.warn('⚠️ Token invalid, clearing...');
-            this.logout();
-          }
-        }
+      if (!merchantId) {
+        console.error('❌ Merchant ID is required for initialization');
+        return this;
       }
-      
+
+      this.merchantId = merchantId;
       this.initialized = true;
       
-      // Trigger custom event for app to listen to
-      window.dispatchEvent(new CustomEvent('substrack:initialized', {
-        detail: { hasSubscription: this.hasSubscription() }
-      }));
+      console.log('✅ SDK ready. Call checkSubscription(email) to verify user.');
       
       return this;
     }
 
-    // Exchange Stripe session for access token
-    async exchangeSessionForToken(sessionId) {
+    // Main method: Check if email has active subscription
+    async checkSubscription(email) {
+      if (!this.initialized || !this.merchantId) {
+        console.error('❌ SDK not initialized. Call init(merchantId) first.');
+        return false;
+      }
+
+      if (!email) {
+        console.error('❌ Email is required to check subscription');
+        return false;
+      }
+
       try {
-        console.log('🔄 Exchanging session for token...');
+        console.log('🔍 Checking subscription for:', email);
         
-        const response = await fetch(`${this.apiBase}/exchange-token`, {
+        const response = await fetch(`${this.apiBase}/check-subscription`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId })
+          body: JSON.stringify({ 
+            email: email,
+            merchant_id: this.merchantId 
+          })
         });
-        
+
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('❌ Exchange failed:', errorData.error);
-          return false;
-        }
-        
-        const data = await response.json();
-        
-        if (data.token) {
-          this.setToken(data.token);
-          this.subscriber = data.subscriber;
-          console.log('✅ Token exchanged successfully');
-          console.log('👤 Subscriber:', data.subscriber.email);
-          return true;
-        } else {
-          console.error('❌ No token in response');
-          return false;
-        }
-      } catch (error) {
-        console.error('❌ Error exchanging token:', error);
-        return false;
-      }
-    }
-
-    // Store token in localStorage
-    setToken(token) {
-      this.token = token;
-      localStorage.setItem('substrack_token', token);
-      
-      // Decode JWT to get subscriber info
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        this.subscriber = {
-          email: payload.email,
-          name: payload.name,
-          plan: payload.plan_name,
-          features: payload.features || [],
-          status: payload.status,
-          expiresAt: payload.expires_at,
-        };
-        localStorage.setItem('substrack_subscriber', JSON.stringify(this.subscriber));
-        console.log('💾 Token and subscriber info saved to localStorage');
-      } catch (e) {
-        console.error('❌ Error decoding token:', e);
-      }
-    }
-
-    // Load from localStorage
-    loadFromStorage() {
-      this.token = localStorage.getItem('substrack_token');
-      const subscriberData = localStorage.getItem('substrack_subscriber');
-      
-      if (this.token) {
-        console.log('📂 Loaded token from localStorage');
-      }
-      
-      if (subscriberData) {
-        try {
-          this.subscriber = JSON.parse(subscriberData);
-          console.log('📂 Loaded subscriber from localStorage:', this.subscriber.email);
-        } catch (e) {
-          console.error('❌ Error parsing subscriber data:', e);
-        }
-      }
-    }
-
-    // Verify token with server (checks if subscription still active)
-    async verifyToken() {
-      if (!this.token) {
-        return false;
-      }
-
-      try {
-        const response = await fetch(`${this.apiBase}/verify-token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: this.token })
-        });
-
-        if (!response.ok) {
+          console.error('❌ Subscription check failed:', errorData.error);
+          this.subscriber = null;
           return false;
         }
 
         const data = await response.json();
         
-        if (data.valid) {
-          // Update subscriber info from server
+        if (data.has_subscription) {
           this.subscriber = data.subscriber;
-          localStorage.setItem('substrack_subscriber', JSON.stringify(this.subscriber));
-          console.log('✅ Token verified successfully');
+          console.log('✅ Active subscription found');
+          console.log('📋 Plan:', data.subscriber.plan);
+          console.log('📋 Status:', data.subscriber.status);
+          
+          // Trigger custom event
+          window.dispatchEvent(new CustomEvent('substrack:subscription-verified', {
+            detail: { subscriber: this.subscriber }
+          }));
+          
           return true;
         } else {
-          console.warn('⚠️ Token verification failed:', data.error);
+          console.log('ℹ️ No active subscription found');
+          this.subscriber = null;
+          
+          // Trigger custom event
+          window.dispatchEvent(new CustomEvent('substrack:no-subscription'));
+          
           return false;
         }
       } catch (error) {
-        console.error('❌ Error verifying token:', error);
+        console.error('❌ Error checking subscription:', error);
+        this.subscriber = null;
         return false;
       }
     }
 
-    // Check if user has active subscription
+    // Check if user has active subscription (after calling checkSubscription)
     hasSubscription() {
-      if (!this.token || !this.subscriber) {
-        return false;
-      }
-      
-      return this.subscriber.status === 'active';
+      return this.subscriber !== null && this.subscriber.status === 'active';
     }
 
     // Check if user has specific feature
@@ -178,7 +99,7 @@
         return false;
       }
       
-      return this.subscriber.features.includes(featureName);
+      return this.subscriber.features && this.subscriber.features.includes(featureName);
     }
 
     // Get subscriber info
@@ -186,21 +107,28 @@
       return this.subscriber;
     }
 
-    // Get token (for API calls if needed)
-    getToken() {
-      return this.token;
+    // Get current plan name
+    getPlan() {
+      return this.subscriber?.plan || null;
     }
 
-    // Logout / clear token
-    logout() {
-      this.token = null;
+    // Get subscription status
+    getStatus() {
+      return this.subscriber?.status || null;
+    }
+
+    // Get next renewal date
+    getNextRenewalDate() {
+      return this.subscriber?.next_renewal_date || null;
+    }
+
+    // Clear subscriber data (for logout)
+    clearSubscription() {
       this.subscriber = null;
-      localStorage.removeItem('substrack_token');
-      localStorage.removeItem('substrack_subscriber');
-      console.log('👋 Logged out from Substrack');
+      console.log('🔄 Subscription data cleared');
       
       // Trigger custom event
-      window.dispatchEvent(new CustomEvent('substrack:logout'));
+      window.dispatchEvent(new CustomEvent('substrack:cleared'));
     }
 
     // Show subscription widget (optional UI helper)
@@ -221,6 +149,7 @@
               <div>
                 <strong style="color: #065f46; display: block;">✅ Active Subscription</strong>
                 <p style="margin: 0; font-size: 14px; color: #047857;">${this.subscriber.plan}</p>
+                ${this.subscriber.next_renewal_date ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #059669;">Renews: ${new Date(this.subscriber.next_renewal_date).toLocaleDateString()}</p>` : ''}
               </div>
             </div>
           </div>
@@ -230,7 +159,7 @@
           <div style="padding: 16px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; margin-bottom: 20px;">
             <div style="display: flex; align-items: center;">
               <svg style="width: 24px; height: 24px; color: #f59e0b; margin-right: 12px; flex-shrink: 0;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
               </svg>
               <div>
                 <strong style="color: #92400e; display: block;">⚠️ No Active Subscription</strong>
@@ -246,20 +175,6 @@
   // Expose to window
   window.Substrack = Substrack;
 
-  // Auto-initialize if data-auto-init attribute present
-  if (document.currentScript && document.currentScript.hasAttribute('data-auto-init')) {
-    window.substrack = new Substrack();
-    
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() {
-        window.substrack.init();
-      });
-    } else {
-      window.substrack.init();
-    }
-  }
-
-  console.log('✅ Substrack SDK v2.0.0 loaded');
+  console.log('✅ Substrack SDK v3.0.0 (Email-Based) loaded');
 
 })(window);
