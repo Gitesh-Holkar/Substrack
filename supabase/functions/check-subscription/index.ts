@@ -6,7 +6,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 serve(async (req) => {
@@ -14,6 +15,9 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+
+  // Log incoming request
+  console.log('📥 Incoming request:', req.method, req.url)
 
   try {
     const { email, merchant_id } = await req.json()
@@ -36,30 +40,32 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Query database for active subscription
-    const { data: subscriber, error: subscriberError } = await supabase
-      .from('subscribers')
-      .select(`
-        id,
-        customer_email,
-        customer_name,
-        status,
-        next_renewal_date,
-        last_payment_date,
-        last_payment_amount,
-        start_date,
-        subscription_plans (
-          id,
-          name,
-          price,
-          billing_cycle,
-          features,
-          description
-        )
-      `)
-      .eq('customer_email', email.toLowerCase().trim())
-      .eq('merchant_id', merchant_id)
-      .eq('status', 'active')
-      .single()
+const { data: subscriber, error: subscriberError } = await supabase
+  .from('subscribers')
+  .select(`
+    id,
+    customer_email,
+    customer_name,
+    status,
+    next_renewal_date,
+    last_payment_date,
+    last_payment_amount,
+    start_date,
+    subscription_plans (
+      id,
+      name,
+      price,
+      billing_cycle,
+      features,
+      description
+    )
+  `)
+  .ilike('customer_email', email.trim())
+  .eq('merchant_id', merchant_id)
+  .eq('status', 'active')
+  .limit(1)
+  .single();
+
 
     // If no active subscription found
     if (subscriberError || !subscriber) {

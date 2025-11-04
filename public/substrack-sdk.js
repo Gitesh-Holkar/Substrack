@@ -41,19 +41,32 @@
 
       try {
         console.log('🔍 Checking subscription for:', email);
+        console.log('🏪 Merchant ID:', this.merchantId);
         
         const response = await fetch(`${this.apiBase}/check-subscription`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify({ 
-            email: email,
+            email: email.toLowerCase().trim(),
             merchant_id: this.merchantId 
           })
         });
 
+        console.log('📡 Response status:', response.status);
+
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('❌ Subscription check failed:', errorData.error);
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (e) {
+            errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+          }
+          console.error('❌ Subscription check failed:', errorData);
+          console.error('❌ Status:', response.status);
+          console.error('❌ Error details:', errorData.error || errorData);
           this.subscriber = null;
           return false;
         }
