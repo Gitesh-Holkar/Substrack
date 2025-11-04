@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Monitor, Smartphone } from 'lucide-react';
+import { Monitor, Smartphone, Mail, ExternalLink } from 'lucide-react';
 
 export function MobileBlockModal() {
   const [isMobile, setIsMobile] = useState(false);
@@ -21,76 +21,80 @@ export function MobileBlockModal() {
 
   if (!isMobile) return null;
 
+  const supportEmail = 'support@substrack-yags.vercel.app';
+  const currentUrl = window.location.href;
+  
+  const mailtoLink = `mailto:${supportEmail}?subject=Substrack%20-%20Desktop%20Access%20Link&body=Hi%2C%0A%0AI%20would%20like%20to%20access%20Substrack%20on%20desktop.%0A%0APlease%20save%20this%20link%3A%20${encodeURIComponent(currentUrl)}%0A%0AThank%20you!`;
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-900 to-indigo-900 p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center animate-fade-in">
-        {/* Icon */}
-        <div className="relative mb-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 p-3 sm:p-4 overflow-y-auto">
+      <div className="max-w-md w-full bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 text-center animate-fade-in my-auto">
+        {/* Icon - Responsive sizing */}
+        <div className="relative mb-4 sm:mb-6">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-24 h-24 bg-blue-100 rounded-full animate-pulse"></div>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-blue-100 rounded-full animate-pulse"></div>
           </div>
           <div className="relative flex items-center justify-center">
-            <Monitor className="w-16 h-16 text-blue-600 z-10" />
-            <div className="absolute -bottom-2 -right-2">
+            <Monitor className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-blue-600 z-10" />
+            <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2">
               <div className="relative">
-                <Smartphone className="w-10 h-10 text-red-500" />
+                <Smartphone className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 text-red-500" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-0.5 bg-red-500 transform rotate-45"></div>
+                  <div className="w-6 h-0.5 sm:w-7 sm:h-0.5 md:w-8 bg-red-500 transform rotate-45"></div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Title */}
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">
+        {/* Title - Responsive sizing */}
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 px-2">
           Desktop Only Experience
         </h2>
 
-        {/* Message */}
-        <p className="text-gray-600 mb-6 leading-relaxed">
+        {/* Message - Responsive sizing */}
+        <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 leading-relaxed px-2">
           <strong>Substrack</strong> is optimized for desktop use to provide the best experience for managing your subscriptions.
         </p>
 
-        {/* Instructions Box */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5 mb-6">
-          <div className="flex items-start gap-3 text-left">
-            <div className="flex-shrink-0 mt-1">
-              <Monitor className="w-6 h-6 text-blue-600" />
+        
+
+        {/* Desktop Mode Instructions - New */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex items-start gap-2 sm:gap-3 text-left">
+            <div className="flex-shrink-0 mt-0.5">
+              <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-blue-900 mb-2">
-                Please switch to a desktop or laptop
+              <h3 className="font-semibold text-purple-900 mb-1.5 text-sm sm:text-base">
+                💡 Quick Tip: Desktop Mode
               </h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Use a screen width of at least 768px</li>
-                <li>• Access from a computer or tablet in landscape</li>
-                <li>• Enjoy full dashboard functionality</li>
-              </ul>
+              <p className="text-xs sm:text-sm text-purple-800 leading-relaxed">
+                Most mobile browsers have a "Desktop Mode" or "Request Desktop Site" option in their settings menu. Enable it to view this site!
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Features Note */}
-        <div className="text-xs text-gray-500 mb-4">
-          📊 Full analytics • 💳 Payment management • 📈 Advanced reporting
+     
+
+        {/* Support Email Display */}
+        <div className="bg-gray-50 rounded-lg p-2 sm:p-3 mb-4 sm:mb-6">
+          <p className="text-xs sm:text-sm text-gray-600 mb-1">
+            Need help?
+          </p>
+          <a 
+            href={`mailto:${supportEmail}`}
+            className="text-xs sm:text-sm font-mono text-blue-600 hover:text-blue-700 break-all"
+          >
+            {supportEmail}
+          </a>
         </div>
 
-        {/* Email Yourself Link */}
-        <a
-          href={`mailto:?subject=Check out Substrack&body=Visit Substrack on desktop: ${window.location.href}`}
-          className="inline-flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          Email me this link
-        </a>
-
-        {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-xs text-gray-400">
-            Mobile app coming soon! 📱
+        {/* Footer - Responsive */}
+        <div className="pt-4 sm:pt-6 border-t border-gray-200">
+          <p className="text-xs sm:text-sm text-gray-400">
+            📱 Mobile app coming soon!
           </p>
         </div>
       </div>
