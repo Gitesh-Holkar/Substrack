@@ -9,6 +9,3 @@ export const getStripeInstance = (publishableKey: string) => {
   return stripePromise;
 };
 
-export const resetStripeInstance = () => {
-  stripePromise = null;
-};

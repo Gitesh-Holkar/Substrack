@@ -5,6 +5,7 @@ export function MobileBlockModal() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+
     const checkMobile = () => {
       const isMobileDevice = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
         navigator.userAgent
